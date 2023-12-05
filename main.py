@@ -5,17 +5,9 @@ from functools import lru_cache
 import config
 import os
 import csv
+import json
 import numpy as np
 
-LOW_FREQ_HEADER = ["Timestamp",
-                   "Accelerometer1.Max.X", "Accelerometer1.Max.Y", "Accelerometer1.Max.Z",
-                   "Accelerometer2.Max.X", "Accelerometer2.Max.Y", "Accelerometer2.Max.Z",
-                   "Accelerometer1.Min.X", "Accelerometer1.Min.Y", "Accelerometer1.Min.Z",
-                   "Accelerometer2.Min.X", "Accelerometer2.Min.Y", "Accelerometer2.Min.Z",
-                   "Temperature"]
-HIGH_FREQ_HEADER = ["Timestamp",
-                    "Accelerometer1.X", "Accelerometer1.Y", "Accelerometer1.Z",
-                    "Accelerometer2.X", "Accelerometer2.Y", "Accelerometer2.Z"]
 low_freq_data_path = ''
 
 app = FastAPI()
@@ -36,7 +28,8 @@ async def upload_low_freq(
     raw_data = raw_bytes.decode("utf-8").strip("\r\n")
     low_freq_data = raw_data.replace('"', '')
     low_freq_data = low_freq_data.split(",")
-    low_freq_data = dict(zip(LOW_FREQ_HEADER, low_freq_data))
+    low_freq_header = json.loads(settings.low_freq_header)
+    low_freq_data = dict(zip(low_freq_header, low_freq_data))
     continue_with_file = True
     global low_freq_data_path
     try:
@@ -56,7 +49,7 @@ async def upload_low_freq(
     try:
         file_exists = os.path.exists(TEMP_LOW_FREQ_DATA_PATH)
         with open(TEMP_LOW_FREQ_DATA_PATH, 'a', newline='') as f:
-            writer = csv.DictWriter(f, delimiter=',', fieldnames=LOW_FREQ_HEADER)
+            writer = csv.DictWriter(f, delimiter=',', fieldnames=low_freq_header)
             if not file_exists:
                 writer.writeheader()
             writer.writerow(low_freq_data)
@@ -94,10 +87,11 @@ async def upload_accelerations(
     indicies = [(i+1) for i, x in enumerate(decoded_data) if x.endswith('x')]
     decoded_data = [each_split.tolist() for each_split in np.split(decoded_data, indicies) if len(each_split)]
     high_freq_data_lists = [[item.replace('x', '') for item in lst] for lst in decoded_data]
-    high_freq_data = [dict(zip(HIGH_FREQ_HEADER, hf_list)) for hf_list in high_freq_data_lists]
+    high_freq_header = json.loads(settings.high_freq_header)
+    high_freq_data = [dict(zip(high_freq_header, hf_list)) for hf_list in high_freq_data_lists]
     try:
         with open(TEMP_HIGH_FREQ_DATA_PATH, 'a', newline='') as f:
-            writer = csv.DictWriter(f, delimiter=',', fieldnames=HIGH_FREQ_HEADER)
+            writer = csv.DictWriter(f, delimiter=',', fieldnames=high_freq_header)
             writer.writeheader()
             writer.writerows(high_freq_data)
         with open(TEMP_HIGH_FREQ_DATA_PATH, 'r') as f:
