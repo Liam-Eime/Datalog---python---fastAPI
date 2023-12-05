@@ -1,2 +1,3 @@
 Logger Data/
+__pycache__/
 .env
