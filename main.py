@@ -2,12 +2,13 @@
 
 from fastapi import FastAPI, Request, Depends
 from functools import lru_cache
-from datetime import datetime
+from datetime import datetime, timedelta
 import config
 import os
 import csv
 import json
 import numpy as np
+import pandas as pd
 
 low_freq_data_path = ''
 prev_high_freq_data_path = ''
@@ -143,6 +144,17 @@ async def upload_high_freq_event(
         print(old_file_end_time, new_file_start_time)
     except Exception:
         print("error in timestamps")
+
+    try:
+        delta_time = new_file_start_time - old_file_end_time
+        if delta_time <= timedelta(0, 0, settings.scan_rate_micro_s):
+            combined_csv = pd.concat([pd.read_csv(prev_high_freq_data_path), pd.read_csv(high_freq_data_path)])
+            combined_csv.to_csv('testOut.csv', index=False)
+            print("combined HF files")
+        else:
+            pass
+    except Exception:
+        pass
 
     prev_high_freq_data_path = high_freq_data_path
     return {"message": "successfully uploaded high frequency data"}
