@@ -13,6 +13,35 @@ import pandas as pd
 low_freq_data_path = ''
 prev_high_freq_data_path = ''
 
+def format_timestamp(entry: list[str]):
+    """Format timestamp string for desired appearance in file"""
+    formatted_timestamp = entry[0].replace(':', '.').replace("-", ".").replace(" ", "_")
+    return formatted_timestamp
+
+def get_initial_timestamp(file_path: str):
+    """Get the initial timestamp from file"""
+    with open(file_path, 'r') as f:
+        f.readline()  # skip over the header
+        first_entry = f.readline().strip("\r\n").split(",")
+    initial_timestamp = format_timestamp(first_entry)
+    return initial_timestamp
+
+def get_final_timestamp(file_path: str, row_pos: int):
+    """Get the final timestamp from file"""
+    num_newlines = 0
+    with open(file_path, 'rb') as f:
+        try:  # catch OSError in case of a one line file
+            f.seek(-2, os.SEEK_END)
+            while num_newlines < row_pos:
+                f.seek(-2, os.SEEK_CUR)
+                if f.read(1) == b'\n':
+                    num_newlines += 1
+        except OSError:
+            f.seek(0)
+        final_entry = f.readline().decode().strip("\r\n").split(",")
+    final_timestamp = format_timestamp(final_entry)
+    return final_timestamp
+
 app = FastAPI()
 
 @lru_cache
@@ -56,19 +85,8 @@ async def upload_low_freq_data(
             if not file_exists:
                 writer.writeheader()
             writer.writerow(low_freq_data)
-        with open(TEMP_LOW_FREQ_DATA_PATH, 'r') as f:
-            f.readline()  # read header to skip header
-            first_entry = f.readline().strip("\r\n").split(",")
-        initial_timestamp = first_entry[0].replace(':', '.').replace("-", ".").replace(" ", "_")
-        with open(TEMP_LOW_FREQ_DATA_PATH, 'rb') as f:
-            try:  # catch OSError in case of a one line file
-                f.seek(-2, os.SEEK_END)
-                while f.read(1) != b'\n':
-                    f.seek(-2, os.SEEK_CUR)
-            except OSError:
-                f.seek(0)
-            last_entry = f.readline().decode().strip("\r\n").split(",")
-        latest_timestamp = last_entry[0].replace(':', '.').replace("-", ".").replace(" ", "_")
+        initial_timestamp = get_initial_timestamp(TEMP_LOW_FREQ_DATA_PATH)
+        latest_timestamp = get_final_timestamp(TEMP_LOW_FREQ_DATA_PATH, 1)
         total_timestamp = f"{initial_timestamp}-{latest_timestamp}"
         output_filename = settings.output_low_freq_filename + ' %s.csv' % total_timestamp
         low_freq_data_path = os.path.join(OUTPUT_DIR, output_filename)
@@ -149,10 +167,35 @@ async def upload_high_freq_event(
         delta_time = new_file_start_time - old_file_end_time
         if delta_time <= timedelta(0, 0, settings.scan_rate_micro_s):
             combined_csv = pd.concat([pd.read_csv(prev_high_freq_data_path), pd.read_csv(high_freq_data_path)])
-            combined_csv.to_csv('testOut.csv', index=False)
-            print("combined HF files")
+            combined_csv.to_csv('temp.csv', index=False)
+            os.remove(high_freq_data_path)
+            os.remove(prev_high_freq_data_path)
         else:
             pass
+    except Exception:
+        pass
+
+    try:
+        with open('temp.csv', 'r') as f:
+            f.readline()  # Read header to skip header
+            first_entry = f.readline().strip("\r\n").split(",")
+        initial_timestamp = first_entry[0].replace(':', '.').replace("-", ".").replace(" ", "_")
+        with open('temp.csv', 'rb') as f:
+            num_newlines = 0
+            try:  # catch OSError in case of a one line file
+                f.seek(-2, os.SEEK_END)
+                while num_newlines < 2:  # 2 to seek to second last line, which is required due to empty row at end of data file
+                    f.seek(-2, os.SEEK_CUR)
+                    if f.read(1) == b'\n':
+                        num_newlines += 1
+            except OSError:
+                f.seek(0)
+            last_entry = f.readline().decode().strip("\r\n").split(",")
+        latest_timestamp = last_entry[0].replace(':', '.').replace("-", ".").replace(" ", "_")
+        total_timestamp = f"{initial_timestamp}-{latest_timestamp}"
+        output_filename = settings.output_high_freq_filename + ' %s.csv' % total_timestamp
+        high_freq_data_path = os.path.join(OUTPUT_DIR, output_filename)
+        os.rename('temp.csv', high_freq_data_path)
     except Exception:
         pass
 
