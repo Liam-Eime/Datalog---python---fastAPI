@@ -19,13 +19,13 @@ def get_settings():
     return config.Settings()
     
 @app.post("/uploadLowFreq/{logger_filename}")
-async def upload_low_freq(
+async def upload_low_freq_data(
     logger_filename: str, 
     request: Request,
     settings: config.Settings = Depends(get_settings)
 ):
     OUTPUT_DIR = settings.output_dir
-    TEMP_LOW_FREQ_DATA_PATH = os.path.join(OUTPUT_DIR, settings.temp_low_freq_filename)
+    TEMP_LOW_FREQ_DATA_PATH = os.path.join(OUTPUT_DIR, settings.temp_low_freq_filename) + ".csv"
     raw_bytes = await request.body()
     raw_data = raw_bytes.decode("utf-8").strip("\r\n")
     low_freq_data = raw_data.replace('"', '')
@@ -77,13 +77,13 @@ async def upload_low_freq(
     return {"message": "successfully uploaded low frequency data"}
 
 @app.post("/uploadHighFreqAccel/{logger_filename}")
-async def upload_accelerations(
+async def upload_high_freq_event(
     logger_filename: str,
     request: Request,
     settings: config.Settings = Depends(get_settings)
 ):
     OUTPUT_DIR = settings.output_dir
-    TEMP_HIGH_FREQ_DATA_PATH = os.path.join(OUTPUT_DIR, settings.temp_high_freq_filename)
+    TEMP_HIGH_FREQ_DATA_PATH = os.path.join(OUTPUT_DIR, settings.temp_high_freq_filename) + ".csv"
     raw_bytes = await request.body()
     decoded_data = raw_bytes.decode("utf-8").replace('"', '').replace('\r\n', 'x,').split(",")
     indicies = [(i+1) for i, x in enumerate(decoded_data) if x.endswith('x')]
