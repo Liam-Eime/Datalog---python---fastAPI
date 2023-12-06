@@ -2,6 +2,7 @@
 
 from fastapi import FastAPI, Request, Depends
 from functools import lru_cache
+from datetime import datetime
 import config
 import os
 import csv
@@ -9,6 +10,7 @@ import json
 import numpy as np
 
 low_freq_data_path = ''
+prev_high_freq_data_path = ''
 
 app = FastAPI()
 
@@ -45,7 +47,7 @@ async def upload_low_freq(
         if continue_with_file:
             os.rename(low_freq_data_path, TEMP_LOW_FREQ_DATA_PATH)
     except Exception:
-        pass
+        pass  # do nothing because only error when attempting to rename non-existent file on first event
     try:
         file_exists = os.path.exists(TEMP_LOW_FREQ_DATA_PATH)
         with open(TEMP_LOW_FREQ_DATA_PATH, 'a', newline='') as f:
@@ -54,7 +56,7 @@ async def upload_low_freq(
                 writer.writeheader()
             writer.writerow(low_freq_data)
         with open(TEMP_LOW_FREQ_DATA_PATH, 'r') as f:
-            f.readline()  # Read header to skip header
+            f.readline()  # read header to skip header
             first_entry = f.readline().strip("\r\n").split(",")
         initial_timestamp = first_entry[0].replace(':', '.').replace("-", ".").replace(" ", "_")
         with open(TEMP_LOW_FREQ_DATA_PATH, 'rb') as f:
@@ -89,6 +91,24 @@ async def upload_accelerations(
     high_freq_data_lists = [[item.replace('x', '') for item in lst] for lst in decoded_data]
     high_freq_header = json.loads(settings.high_freq_header)
     high_freq_data = [dict(zip(high_freq_header, hf_list)) for hf_list in high_freq_data_lists]
+    global prev_high_freq_data_path
+
+    try:
+        with open(prev_high_freq_data_path, 'rb') as f:
+            num_newlines = 0
+            try:  # catch OSError in case of a one line file
+                f.seek(-2, os.SEEK_END)
+                while num_newlines < 2:  # 2 to seek to second last line, which is required due to empty row at end of data file
+                    f.seek(-2, os.SEEK_CUR)
+                    if f.read(1) == b'\n':
+                        num_newlines += 1
+            except OSError:
+                f.seek(0)
+            last_entry = f.readline().decode().strip("\r\n").split(",")
+        prev_last_timestamp = last_entry[0].replace(':', '.').replace("-", ".").replace(" ", "_")
+    except Exception:
+        pass
+
     try:
         with open(TEMP_HIGH_FREQ_DATA_PATH, 'a', newline='') as f:
             writer = csv.DictWriter(f, delimiter=',', fieldnames=high_freq_header)
@@ -116,4 +136,13 @@ async def upload_accelerations(
         os.rename(TEMP_HIGH_FREQ_DATA_PATH, high_freq_data_path)
     except Exception:
         return {"message": "There was an error uploading the file"}
+    
+    try:
+        old_file_end_time = datetime.strptime(prev_last_timestamp, '%Y.%m.%d_%H.%M.%S.%f')
+        new_file_start_time = datetime.strptime(initial_timestamp, '%Y.%m.%d_%H.%M.%S.%f')
+        print(old_file_end_time, new_file_start_time)
+    except Exception:
+        print("error in timestamps")
+
+    prev_high_freq_data_path = high_freq_data_path
     return {"message": "successfully uploaded high frequency data"}
