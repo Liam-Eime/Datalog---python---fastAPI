@@ -87,7 +87,7 @@ async def upload_low_freq_data(
     
     list_of_files = [os.path.abspath(name) for name in os.listdir(OUTPUT_DIR) if os.path.isfile(os.path.join(OUTPUT_DIR, name))]
     if len(list_of_files) >= settings.max_num_of_files:
-        oldest_file = sorted([settings.output_folder_low_freq+f for f in os.listdir(settings.output_folder_low_freq)], key=os.path.getctime)[0]
+        oldest_file = sorted([os.path.join(settings.output_folder_low_freq, f) for f in os.listdir(settings.output_folder_low_freq)], key=os.path.getctime)[0]
         print(oldest_file)
 
     return {"message": "successfully uploaded low frequency data"}
