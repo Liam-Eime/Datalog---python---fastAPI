@@ -2,6 +2,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     output_dir: str
+    output_folder_low_freq: str
+    output_folder_high_freq: str
     temp_low_freq_filename: str
     temp_high_freq_filename: str
     output_low_freq_filename: str
