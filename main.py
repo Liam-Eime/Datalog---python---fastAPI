@@ -84,6 +84,12 @@ async def upload_low_freq_data(
         os.rename(TEMP_LOW_FREQ_DATA_PATH, low_freq_data_path)
     except Exception:  # exception returns an error message that there was an error updating file
         return {"message": "There was an error updating the file"}
+    
+    list_of_files = [os.path.abspath(name) for name in os.listdir(OUTPUT_DIR) if os.path.isfile(os.path.join(OUTPUT_DIR, name))]
+    if len(list_of_files) >= settings.max_num_of_files:
+        oldest_file = sorted([settings.output_folder_low_freq+f for f in os.listdir(settings.output_folder_low_freq)], key=os.path.getctime)[0]
+        print(oldest_file)
+
     return {"message": "successfully uploaded low frequency data"}
 
 @app.post("/uploadHighFreqAccel/{logger_filename}")
