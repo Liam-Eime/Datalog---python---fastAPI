@@ -1,9 +1,15 @@
-# main.py
+"""
+Uvicorn server with FastAPI for HTTP post methods for a CR1000 data logger to send accelerometer and thermocouple data.
+
+Author: Liam Eime
+Date: 07/12/2023
+"""
 
 from fastapi import FastAPI, Request, Depends
 from functools import lru_cache
 from datetime import datetime, timedelta
 import config
+import timestamp
 import os
 import csv
 import json
@@ -12,35 +18,6 @@ import pandas as pd
 
 low_freq_data_path = ''
 prev_high_freq_data_path = ''
-
-def format_timestamp(entry: list[str]):
-    """Format timestamp string for desired appearance in file"""
-    formatted_timestamp = entry[0].replace(':', '.').replace("-", ".").replace(" ", "_")
-    return formatted_timestamp
-
-def get_initial_timestamp(file_path: str):
-    """Get the initial timestamp from file"""
-    with open(file_path, 'r') as f:
-        f.readline()  # skip over the header
-        first_entry = f.readline().strip("\r\n").split(",")
-    initial_timestamp = format_timestamp(first_entry)
-    return initial_timestamp
-
-def get_final_timestamp(file_path: str, row_pos: int):
-    """Get the final timestamp from file"""
-    num_newlines = 0
-    with open(file_path, 'rb') as f:
-        try:  # catch OSError in case of a one line file
-            f.seek(-2, os.SEEK_END)
-            while num_newlines < row_pos:
-                f.seek(-2, os.SEEK_CUR)
-                if f.read(1) == b'\n':
-                    num_newlines += 1
-        except OSError:
-            f.seek(0)
-        final_entry = f.readline().decode().strip("\r\n").split(",")
-    final_timestamp = format_timestamp(final_entry)
-    return final_timestamp
 
 app = FastAPI()
 
@@ -54,6 +31,17 @@ async def upload_low_freq_data(
     request: Request,
     settings: config.Settings = Depends(get_settings)
 ):
+    """
+    #### HTTP Post method for the low frequency data
+
+    This method receives low frequency data from the CR1000 data logger.\n
+    The low frequency data is sent every 30s from the logger containing a single sample.\n
+    The samples are appended to the same file until the desired amount of time has passes between initial and final sample, in which then a new file is written.\n
+    Each sample has the following information:
+        - 1 thermocouple temperature probe measuring temperature (1 measurement)
+        - 2 tri-axial accelerometers measuring maximum and minimum accelerations for each axis (6 measurements each)
+        - The timestamp for these samples
+    """
     OUTPUT_DIR = settings.output_dir
     TEMP_LOW_FREQ_DATA_PATH = os.path.join(OUTPUT_DIR, settings.temp_low_freq_filename) + ".csv"
     raw_bytes = await request.body()
@@ -70,8 +58,6 @@ async def upload_low_freq_data(
         if low_freq_data_rows_count >= settings.max_low_freq_data_rows + 1:  # +1 due to header
             continue_with_file = False
     except Exception:
-        if low_freq_data_path != '':
-            print('an error occured when trying to read existing file')
         pass
     try:
         if continue_with_file:
@@ -85,8 +71,8 @@ async def upload_low_freq_data(
             if not file_exists:
                 writer.writeheader()
             writer.writerow(low_freq_data)
-        initial_timestamp = get_initial_timestamp(TEMP_LOW_FREQ_DATA_PATH)
-        latest_timestamp = get_final_timestamp(TEMP_LOW_FREQ_DATA_PATH, 1)
+        initial_timestamp = timestamp.get_initial_timestamp(TEMP_LOW_FREQ_DATA_PATH)
+        latest_timestamp = timestamp.get_final_timestamp(TEMP_LOW_FREQ_DATA_PATH, 1)
         total_timestamp = f"{initial_timestamp}-{latest_timestamp}"
         output_filename = settings.output_low_freq_filename + ' %s.csv' % total_timestamp
         low_freq_data_path = os.path.join(OUTPUT_DIR, output_filename)
@@ -101,6 +87,16 @@ async def upload_high_freq_event(
     request: Request,
     settings: config.Settings = Depends(get_settings)
 ):
+    """
+    #### HTTP Post method for the high frequency acceleration data
+
+    This method receives high frequency data from the CR1000 data logger.\n
+    The high frequency data sent contains multiple rapid samples for an event in which accelerations go above a threshold.\n
+    The multiple samples are all written to one file.\n
+    The high frequency data samples contain the following:
+        - Timestamps
+        - 6 acceleration measurements (1 for each axis on 2 tri-axial accelerometers)
+    """
     OUTPUT_DIR = settings.output_dir
     TEMP_HIGH_FREQ_DATA_PATH = os.path.join(OUTPUT_DIR, settings.temp_high_freq_filename) + ".csv"
     raw_bytes = await request.body()
@@ -111,93 +107,48 @@ async def upload_high_freq_event(
     high_freq_header = json.loads(settings.high_freq_header)
     high_freq_data = [dict(zip(high_freq_header, hf_list)) for hf_list in high_freq_data_lists]
     global prev_high_freq_data_path
-
     try:
-        with open(prev_high_freq_data_path, 'rb') as f:
-            num_newlines = 0
-            try:  # catch OSError in case of a one line file
-                f.seek(-2, os.SEEK_END)
-                while num_newlines < 2:  # 2 to seek to second last line, which is required due to empty row at end of data file
-                    f.seek(-2, os.SEEK_CUR)
-                    if f.read(1) == b'\n':
-                        num_newlines += 1
-            except OSError:
-                f.seek(0)
-            last_entry = f.readline().decode().strip("\r\n").split(",")
-        prev_last_timestamp = last_entry[0].replace(':', '.').replace("-", ".").replace(" ", "_")
+        prev_last_timestamp = timestamp.get_final_timestamp(prev_high_freq_data_path, 2)
     except Exception:
         pass
-
     try:
         with open(TEMP_HIGH_FREQ_DATA_PATH, 'a', newline='') as f:
             writer = csv.DictWriter(f, delimiter=',', fieldnames=high_freq_header)
             writer.writeheader()
             writer.writerows(high_freq_data)
-        with open(TEMP_HIGH_FREQ_DATA_PATH, 'r') as f:
-            f.readline()  # Read header to skip header
-            first_entry = f.readline().strip("\r\n").split(",")
-        initial_timestamp = first_entry[0].replace(':', '.').replace("-", ".").replace(" ", "_")
-        with open(TEMP_HIGH_FREQ_DATA_PATH, 'rb') as f:
-            num_newlines = 0
-            try:  # catch OSError in case of a one line file
-                f.seek(-2, os.SEEK_END)
-                while num_newlines < 2:  # 2 to seek to second last line, which is required due to empty row at end of data file
-                    f.seek(-2, os.SEEK_CUR)
-                    if f.read(1) == b'\n':
-                        num_newlines += 1
-            except OSError:
-                f.seek(0)
-            last_entry = f.readline().decode().strip("\r\n").split(",")
-        latest_timestamp = last_entry[0].replace(':', '.').replace("-", ".").replace(" ", "_")
+        initial_timestamp = timestamp.get_initial_timestamp(TEMP_HIGH_FREQ_DATA_PATH)
+        latest_timestamp = timestamp.get_final_timestamp(TEMP_HIGH_FREQ_DATA_PATH, 2)
         total_timestamp = f"{initial_timestamp}-{latest_timestamp}"
         output_filename = settings.output_high_freq_filename + ' %s.csv' % total_timestamp
         high_freq_data_path = os.path.join(OUTPUT_DIR, output_filename)
         os.rename(TEMP_HIGH_FREQ_DATA_PATH, high_freq_data_path)
     except Exception:
         return {"message": "There was an error uploading the file"}
-    
     try:
         old_file_end_time = datetime.strptime(prev_last_timestamp, '%Y.%m.%d_%H.%M.%S.%f')
         new_file_start_time = datetime.strptime(initial_timestamp, '%Y.%m.%d_%H.%M.%S.%f')
-        print(old_file_end_time, new_file_start_time)
     except Exception:
-        print("error in timestamps")
-
+        pass
     try:
         delta_time = new_file_start_time - old_file_end_time
         if delta_time <= timedelta(0, 0, settings.scan_rate_micro_s):
             combined_csv = pd.concat([pd.read_csv(prev_high_freq_data_path), pd.read_csv(high_freq_data_path)])
-            combined_csv.to_csv('temp.csv', index=False)
+            temp_filename = os.path.join(OUTPUT_DIR, 'temp.csv')
+            combined_csv.to_csv(temp_filename, index=False)
             os.remove(high_freq_data_path)
             os.remove(prev_high_freq_data_path)
         else:
             pass
     except Exception:
         pass
-
     try:
-        with open('temp.csv', 'r') as f:
-            f.readline()  # Read header to skip header
-            first_entry = f.readline().strip("\r\n").split(",")
-        initial_timestamp = first_entry[0].replace(':', '.').replace("-", ".").replace(" ", "_")
-        with open('temp.csv', 'rb') as f:
-            num_newlines = 0
-            try:  # catch OSError in case of a one line file
-                f.seek(-2, os.SEEK_END)
-                while num_newlines < 2:  # 2 to seek to second last line, which is required due to empty row at end of data file
-                    f.seek(-2, os.SEEK_CUR)
-                    if f.read(1) == b'\n':
-                        num_newlines += 1
-            except OSError:
-                f.seek(0)
-            last_entry = f.readline().decode().strip("\r\n").split(",")
-        latest_timestamp = last_entry[0].replace(':', '.').replace("-", ".").replace(" ", "_")
-        total_timestamp = f"{initial_timestamp}-{latest_timestamp}"
-        output_filename = settings.output_high_freq_filename + ' %s.csv' % total_timestamp
-        high_freq_data_path = os.path.join(OUTPUT_DIR, output_filename)
-        os.rename('temp.csv', high_freq_data_path)
+        temp_initial_timestamp = timestamp.get_initial_timestamp(temp_filename)
+        temp_latest_timestamp = timestamp.get_final_timestamp(temp_filename, 2)
+        total_timestamp = f"{temp_initial_timestamp}-{temp_latest_timestamp}"
+        temp_output_filename = settings.output_high_freq_filename + ' %s.csv' % total_timestamp
+        high_freq_data_path = os.path.join(OUTPUT_DIR, temp_output_filename)
+        os.rename(temp_filename, high_freq_data_path)
     except Exception:
         pass
-
     prev_high_freq_data_path = high_freq_data_path
     return {"message": "successfully uploaded high frequency data"}

@@ -1,5 +1,6 @@
 Logger Data/
 __pycache__/
+.vscode/
 .env
 *.png
 *.csv
