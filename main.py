@@ -45,26 +45,24 @@ async def upload_low_freq_data(
     OUTPUT_DIR = settings.output_dir
     TEMP_LOW_FREQ_DATA_PATH = os.path.join(OUTPUT_DIR, settings.temp_low_freq_filename) + ".csv"
     raw_bytes = await request.body()
-    raw_data = raw_bytes.decode("utf-8").strip("\r\n")
-    low_freq_data = raw_data.replace('"', '')
-    low_freq_data = low_freq_data.split(",")
+    decoded_data = raw_bytes.decode("utf-8").strip("\r\n").replace('"', '').split(",")
     low_freq_header = json.loads(settings.low_freq_header)
-    low_freq_data = dict(zip(low_freq_header, low_freq_data))
+    low_freq_data = dict(zip(low_freq_header, decoded_data))
     continue_with_file = True
     global low_freq_data_path
-    try:
+    try:  # try to open existing low freq data file
         with open(low_freq_data_path, 'r') as f:
             low_freq_data_rows_count = len(f.readlines())
         if low_freq_data_rows_count >= settings.max_low_freq_data_rows + 1:  # +1 due to header
             continue_with_file = False
     except Exception:
-        pass
-    try:
+        pass  # pass, only errors when upload_low_freq_data() called for first time since server boot-up
+    try:  # try to rename old file when row count reaches maximum row count
         if continue_with_file:
             os.rename(low_freq_data_path, TEMP_LOW_FREQ_DATA_PATH)
     except Exception:
-        pass  # do nothing because only error when attempting to rename non-existent file on first event
-    try:
+        pass  # pass, only errors when attempting to rename non-existent file on first event
+    try:  # try to open and append the low freq data to file and rename with total timestamp
         file_exists = os.path.exists(TEMP_LOW_FREQ_DATA_PATH)
         with open(TEMP_LOW_FREQ_DATA_PATH, 'a', newline='') as f:
             writer = csv.DictWriter(f, delimiter=',', fieldnames=low_freq_header)
@@ -77,8 +75,8 @@ async def upload_low_freq_data(
         output_filename = settings.output_low_freq_filename + ' %s.csv' % total_timestamp
         low_freq_data_path = os.path.join(OUTPUT_DIR, output_filename)
         os.rename(TEMP_LOW_FREQ_DATA_PATH, low_freq_data_path)
-    except Exception:
-        return {"message": "There was an error uploading the file"}
+    except Exception:  # exception returns an error message that there was an error updating file
+        return {"message": "There was an error updating the file"}
     return {"message": "successfully uploaded low frequency data"}
 
 @app.post("/uploadHighFreqAccel/{logger_filename}")
@@ -107,12 +105,8 @@ async def upload_high_freq_event(
     high_freq_header = json.loads(settings.high_freq_header)
     high_freq_data = [dict(zip(high_freq_header, hf_list)) for hf_list in high_freq_data_lists]
     global prev_high_freq_data_path
-    try:
-        prev_last_timestamp = timestamp.get_final_timestamp(prev_high_freq_data_path, 2)
-    except Exception:
-        pass
-    try:
-        with open(TEMP_HIGH_FREQ_DATA_PATH, 'a', newline='') as f:
+    try:  # try to open and write the high freq data to file and rename with total timestamp
+        with open(TEMP_HIGH_FREQ_DATA_PATH, 'w', newline='') as f:
             writer = csv.DictWriter(f, delimiter=',', fieldnames=high_freq_header)
             writer.writeheader()
             writer.writerows(high_freq_data)
@@ -122,14 +116,15 @@ async def upload_high_freq_event(
         output_filename = settings.output_high_freq_filename + ' %s.csv' % total_timestamp
         high_freq_data_path = os.path.join(OUTPUT_DIR, output_filename)
         os.rename(TEMP_HIGH_FREQ_DATA_PATH, high_freq_data_path)
+    except Exception:  # exception returns an error message that there was an error updating file
+        return {"message": "There was an error updating the file"}
+    try:  # try read the last timestamp from the previous high frequency data path
+        prev_last_timestamp = timestamp.get_final_timestamp(prev_high_freq_data_path, 2)
     except Exception:
-        return {"message": "There was an error uploading the file"}
-    try:
+        pass  # pass, only errors when there is no previous high freq data file
+    try:  # try combine current and previous files when current file is a continuation of previous one
         old_file_end_time = datetime.strptime(prev_last_timestamp, '%Y.%m.%d_%H.%M.%S.%f')
         new_file_start_time = datetime.strptime(initial_timestamp, '%Y.%m.%d_%H.%M.%S.%f')
-    except Exception:
-        pass
-    try:
         delta_time = new_file_start_time - old_file_end_time
         if delta_time <= timedelta(0, 0, settings.scan_rate_micro_s):
             combined_csv = pd.concat([pd.read_csv(prev_high_freq_data_path), pd.read_csv(high_freq_data_path)])
@@ -137,11 +132,9 @@ async def upload_high_freq_event(
             combined_csv.to_csv(temp_filename, index=False)
             os.remove(high_freq_data_path)
             os.remove(prev_high_freq_data_path)
-        else:
-            pass
     except Exception:
-        pass
-    try:
+        pass  # pass, only errors when there is no previous file last timestamp
+    try:  # try get total timestamp for new combined file
         temp_initial_timestamp = timestamp.get_initial_timestamp(temp_filename)
         temp_latest_timestamp = timestamp.get_final_timestamp(temp_filename, 2)
         total_timestamp = f"{temp_initial_timestamp}-{temp_latest_timestamp}"
@@ -149,6 +142,6 @@ async def upload_high_freq_event(
         high_freq_data_path = os.path.join(OUTPUT_DIR, temp_output_filename)
         os.rename(temp_filename, high_freq_data_path)
     except Exception:
-        pass
+        pass  # pass, only errors when there is no combined file made
     prev_high_freq_data_path = high_freq_data_path
     return {"message": "successfully uploaded high frequency data"}
