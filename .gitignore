@@ -1,4 +1,5 @@
 Logger Data/
+Logger Program/
 __pycache__/
 .vscode/
 .env
