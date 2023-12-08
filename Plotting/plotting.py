@@ -1,7 +1,5 @@
 from matplotlib import pyplot as plt
 from dotenv import load_dotenv
-import matplotlib as mpl
-import numpy as np
 import pandas as pd
 import os
 
@@ -14,8 +12,9 @@ def main():
     list_of_files = [os.path.abspath(name) for name in os.listdir(DIR) if os.path.isfile(os.path.join(DIR, name))]
     newest = sorted([os.path.join(DIR, f) for f in os.listdir(DIR)], key=os.path.getctime)[len(list_of_files) - 1]
     df = pd.read_csv(newest)
-    print(df["Accelerometer1.X"])
-    plt.plot(df["Timestamp"].astype(str), df["Accelerometer1.X"].astype(float))
+    timestamps = pd.to_datetime(df["Timestamp"].astype(str), format='mixed')
+    accelerometer1_x = df["Accelerometer1.X"].astype(float)
+    plt.plot(timestamps, accelerometer1_x)
     plt.show()
 
 if __name__ == '__main__':
