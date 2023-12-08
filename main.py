@@ -51,6 +51,17 @@ async def upload_low_freq_data(
         - 1 thermocouple temperature probe measuring temperature (1 measurement)
         - 2 tri-axial accelerometers measuring maximum and minimum accelerations for each axis (6 measurements each)
         - The timestamp for these samples
+
+    ##### Parameters:
+    - logger_filename: str
+        - The incoming filename added to the http request by the CR1000 logger. Gets disregarded
+    - request: Request
+        - The incoming raw bytes of data as a http request
+    - settings: config.Settings = Depends(get_settings)
+        - Config settings linking the environment variables
+
+    ##### Returns:
+    - The http response message
     """
     OUTPUT_DIR = os.path.join(settings.output_dir, settings.output_folder_low_freq)
     TEMP_LOW_FREQ_DATA_PATH = os.path.join(OUTPUT_DIR, settings.temp_low_freq_filename) + ".csv"
@@ -103,6 +114,17 @@ async def upload_high_freq_event(
     The high frequency data samples contain the following:
         - Timestamps
         - 6 acceleration measurements (1 for each axis on 2 tri-axial accelerometers)
+
+    ##### Parameters:
+    - logger_filename: str
+        - The incoming filename added to the http request by the CR1000 logger. Gets disregarded
+    - request: Request
+        - The incoming raw bytes of data as a http request
+    - settings: config.Settings = Depends(get_settings)
+        - Config settings linking the environment variables
+
+    ##### Returns:
+    - The http response message
     """
     OUTPUT_DIR = os.path.join(settings.output_dir, settings.output_folder_high_freq)
     TEMP_HIGH_FREQ_DATA_PATH = os.path.join(OUTPUT_DIR, settings.temp_high_freq_filename) + ".csv"
