@@ -51,8 +51,7 @@ def create_timestamped_filepath(
 
     ##### Returns:
         - new_path: str
-            - path to timestamped file
-        
+            - path to timestamped file    
     """
     total_timestamp = f"{initial_timestamp}-{final_timestamp}"
     new_filename = filename_to_timestamp + ' %s.csv' % total_timestamp
