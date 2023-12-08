@@ -1,0 +1,79 @@
+'Date: 08/12/2023
+'Program author: Liam Eime
+
+'Declare Constants
+
+'Declare Public Variables
+Public Accel_1(3)
+Alias Accel_1(1) = x_1_gs
+Alias Accel_1(2) = y_1_gs
+Alias Accel_1(3) = z_1_gs
+Units Accel_1 = g
+
+Public Accel_2(3)
+Alias Accel_2(1) = x_2_gs
+Alias Accel_2(2) = y_2_gs
+Alias Accel_2(3) = z_2_gs
+Units Accel_2 = g
+
+Public TCTemp, PTemp
+Units TCTemp = C
+Units PTemp = C
+
+Public HTTPResponse_LF As String * 200
+Public HTTPPostTX_LF
+
+Public HTTPResponse_HF As String * 200
+Public HTTPPostTX_HF
+
+'Declare Private Variables
+Dim AccelOffset = -2.5 'V
+Dim AccelSensitivity = 1/1000
+Dim x_t = 0.1  'x axis acceleration threhsold
+Dim y_t = 0.1  'y axis acceleration threshold
+Dim z_t = 1.1  'z axis acceleration threshold
+Dim HighFrequencyAccelerationCheck As Boolean
+
+Dim HTTPHeader_LF As String * 200
+
+Dim HTTPHeader_HF As String *200
+
+'Define Data Tables.
+DataTable (HighFreqAccel,1,-1 )
+  DataEvent (5,HighFrequencyAccelerationCheck,NOT HighFrequencyAccelerationCheck,-5)
+  Sample (3,Accel_1(),IEEE4)
+  Sample (3,Accel_2(),IEEE4)
+EndTable
+
+DataTable (LowFreq,1,-1 )
+  DataInterval (0,30,Sec,10)
+  Maximum (3,Accel_1(),IEEE4,False,False)
+  Maximum (3,Accel_2(),IEEE4,False,False)
+  Minimum (3,Accel_1(),IEEE4,False,False)
+  Minimum (3,Accel_2(),IEEE4,False,False)
+  Sample (1,TCTemp,IEEE4)
+EndTable
+
+'Main Program
+BeginProg
+  Scan (20,mSec,1000,0)
+    VoltSe (Accel_1(),3,mV5000,1,1,0,250,AccelSensitivity,AccelOffset)
+    VoltSe (Accel_2(),3,mV5000,4,1,0,250,AccelSensitivity,AccelOffset)
+    HighFrequencyAccelerationCheck = (ABS(x_1_gs) >= x_t) OR (ABS(y_1_gs) >= y_t) OR (ABS(z_1_gs) >= z_t) OR (ABS(x_2_gs) >= x_t) OR (ABS(y_2_gs) >= y_t) OR (ABS(z_2_gs) >= z_t)
+    PanelTemp (PTemp,250)
+    TCDiff (TCTemp,1,mV2_5C,5,TypeT,PTemp,False,0,250,1.0,0)
+    CallTable HighFreqAccel
+    CallTable LowFreq
+  NextScan
+  
+  SlowSequence
+    Scan(30, Sec,2, 0)
+      HTTPHeader_LF = "accept: application/json" + "Content-Type: multipart/form-data"
+      HTTPPostTX_LF = HTTPPost ("http://192.168.0.108:8000/uploadLowFreq/","LowFreq",HTTPResponse_LF,HTTPHeader_LF,-1,0,Sec,13,10)
+      
+      HTTPHeader_HF = "accept: application/json" + "Content-Type: multipart/form-data"
+      HTTPPostTX_HF = HTTPPost ("http://192.168.0.108:8000/uploadHighFreqAccel/","HighFreqAccel",HTTPResponse_HF,HTTPHeader_HF,0,0,Sec,13,10)
+    NextScan
+  EndSequence
+EndProg
+

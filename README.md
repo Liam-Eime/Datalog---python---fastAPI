@@ -10,8 +10,5 @@ Uses FastAPI to build an API:
 Uses Uvicorn for running the Python web application
 * Documentation: https://www.uvicorn.org/
 
-### Note:
-A .env file is required for the config.py to work. This file, along with settings and launch.json is not included on this repo.
-
 Author: Liam Eime\
 Date: 08/12/2023
