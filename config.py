@@ -2,7 +2,7 @@
 Python class for storing the config settings.
 
 Author: Liam Eime
-Date: 11/12/2023
+Date: 12/12/2023
 """
 
 
