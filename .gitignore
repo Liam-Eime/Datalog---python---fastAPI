@@ -2,3 +2,4 @@ Logger Data/
 __pycache__/
 *.png
 *.csv
+*.log

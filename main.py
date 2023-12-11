@@ -19,6 +19,7 @@ from datetime import datetime, timedelta
 import os
 import csv
 import json
+import logging
 import numpy as np
 import pandas as pd
 
@@ -33,6 +34,27 @@ prev_high_freq_data_path = ''
 
 # create FastAPI instance
 app = FastAPI()
+
+# create a logger
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+# create a file handler
+file_handler = logging.FileHandler('error.log')
+file_handler.setLevel(logging.ERROR)
+
+# create a console handler
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)
+
+# create a logging format
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+file_handler.setFormatter(formatter)
+console_handler.setFormatter(formatter)
+
+# add the handlers to the logger
+logger.addHandler(file_handler)
+logger.addHandler(console_handler)
 
 # create a singleton instance of the config.Settings class
 @lru_cache
@@ -81,13 +103,16 @@ async def upload_low_freq_data(
             low_freq_data_rows_count = len(f.readlines())
         if low_freq_data_rows_count > settings.max_low_freq_data_rows:
             continue_with_file = False
-    except Exception:
-        pass  # pass, only errors when upload_low_freq_data() called for first time since server boot-up
-    try:  # try to rename old file when row count reaches maximum row count
-        if continue_with_file:
+    except FileNotFoundError:
+        if low_freq_data_path != '':
+            logger.error("There was an error opening the low frequency data file", exc_info=True)
+        else:
+            logger.info("There was no previous low frequency data file")
+    if continue_with_file:  # if file exists and is not full, append data to file
+        try:  # appending data to file is achieved by renaming the file the temp file name and continuing with the temp file
             os.rename(low_freq_data_path, TEMP_LOW_FREQ_DATA_PATH)
-    except Exception:
-        pass  # pass, only errors when attempting to rename non-existent file on first event
+        except Exception:
+            pass
     try:  # try to open and append the low freq data to file and rename with total timestamp
         file_exists = os.path.exists(TEMP_LOW_FREQ_DATA_PATH)
         with open(TEMP_LOW_FREQ_DATA_PATH, 'a', newline='') as f:
@@ -100,7 +125,8 @@ async def upload_low_freq_data(
         low_freq_data_path = files.create_timestamped_filepath(initial_timestamp, latest_timestamp, settings.output_low_freq_filename, PATH_TO_LOW_FREQ_FOLDER)
         os.rename(TEMP_LOW_FREQ_DATA_PATH, low_freq_data_path)
     except Exception:  # exception returns an error message that there was an error updating file
-        return {"message": "There was an error updating the file"}
+        logger.error("There was an error updating the low frequency data file", exc_info=True)
+        return {"message": "There was an error updating the low frequency data file"}
     files.set_num_file_limit(PATH_TO_LOW_FREQ_FOLDER, settings.max_num_of_files)
     return {"message": "successfully uploaded low frequency data"}
 
@@ -151,11 +177,12 @@ async def upload_high_freq_event(
         high_freq_data_path = files.create_timestamped_filepath(initial_timestamp, latest_timestamp, settings.output_high_freq_filename, PATH_TO_HIGH_FREQ_FOLDER)
         os.rename(TEMP_HIGH_FREQ_DATA_PATH, high_freq_data_path)
     except Exception:  # exception returns an error message that there was an error updating file
+        logger.error("There was an error updating the high frequency file", exc_info=True)
         return {"message": "There was an error updating the file"}
     try:  # try read the last timestamp from the previous high frequency data path
         prev_last_timestamp = timestamp.get_final_timestamp(prev_high_freq_data_path, 2)
     except Exception:
-        pass  # pass, only errors when there is no previous high freq data file
+        logger.info("There was no previous high frequency data file")
     try:  # try combine current and previous files when current file is a continuation of previous one
         old_file_end_time = datetime.strptime(prev_last_timestamp, '%Y.%m.%d_%H.%M.%S.%f')
         new_file_start_time = datetime.strptime(initial_timestamp, '%Y.%m.%d_%H.%M.%S.%f')
