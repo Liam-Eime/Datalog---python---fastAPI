@@ -4,9 +4,10 @@ For use with the Python web application for CR1000 data logging.
 Hard codes files as .csv along with main.py
 
 Author: Liam Eime
-Date: 08/12/2023
+Date: 11/12/2023
 """
 
+import pandas as pd
 import os
 
 def set_num_file_limit(
@@ -57,3 +58,26 @@ def create_timestamped_filepath(
     new_filename = filename_to_timestamp + ' %s.csv' % total_timestamp
     new_path = os.path.join(dir, new_filename)
     return new_path
+
+def read_latest_csv_to_dataframe(
+    path_to_folder: str
+):
+    """
+    #### Read latest file from folder and read as csv to data frame object
+
+    ##### Parameters:
+    - path_to_folder: str
+        - path to the folder to read the latest file from
+
+    ##### Returns:
+    - df: Dataframe
+        - dataframe object for csv file
+    - returns None on error
+    """
+    try:  # try read latest file from folder and read as csv to data frame object
+        list_of_files = [os.path.abspath(name) for name in os.listdir(path_to_folder) if os.path.isfile(os.path.join(path_to_folder, name))]
+        newest = sorted([os.path.join(path_to_folder, f) for f in os.listdir(path_to_folder)], key=os.path.getctime)[len(list_of_files) - 1]
+        df = pd.read_csv(newest)
+        return df
+    except Exception:
+        pass
