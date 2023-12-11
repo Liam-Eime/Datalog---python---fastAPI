@@ -63,8 +63,8 @@ async def upload_low_freq_data(
     ##### Returns:
     - The http response message
     """
-    OUTPUT_DIR = os.path.join(settings.output_dir, settings.output_folder_low_freq)
-    TEMP_LOW_FREQ_DATA_PATH = os.path.join(OUTPUT_DIR, settings.temp_low_freq_filename) + ".csv"
+    PATH_TO_LOW_FREQ_FOLDER = os.path.join(settings.output_dir, settings.output_folder_low_freq)
+    TEMP_LOW_FREQ_DATA_PATH = os.path.join(PATH_TO_LOW_FREQ_FOLDER, settings.temp_low_freq_filename) + ".csv"
     raw_bytes = await request.body()
     decoded_data = raw_bytes.decode("utf-8").strip("\r\n").replace('"', '').split(",")
     low_freq_header = json.loads(settings.low_freq_header)
@@ -92,11 +92,11 @@ async def upload_low_freq_data(
             writer.writerow(low_freq_data)
         initial_timestamp = timestamp.get_initial_timestamp(TEMP_LOW_FREQ_DATA_PATH)
         latest_timestamp = timestamp.get_final_timestamp(TEMP_LOW_FREQ_DATA_PATH, 1)
-        low_freq_data_path = files.create_timestamped_filepath(initial_timestamp, latest_timestamp, settings.output_low_freq_filename, OUTPUT_DIR)
+        low_freq_data_path = files.create_timestamped_filepath(initial_timestamp, latest_timestamp, settings.output_low_freq_filename, PATH_TO_LOW_FREQ_FOLDER)
         os.rename(TEMP_LOW_FREQ_DATA_PATH, low_freq_data_path)
     except Exception:  # exception returns an error message that there was an error updating file
         return {"message": "There was an error updating the file"}
-    files.set_num_file_limit(OUTPUT_DIR, settings.max_num_of_files)
+    files.set_num_file_limit(PATH_TO_LOW_FREQ_FOLDER, settings.max_num_of_files)
     return {"message": "successfully uploaded low frequency data"}
 
 @app.post("/uploadHighFreqAccel/{logger_filename}")
@@ -126,8 +126,8 @@ async def upload_high_freq_event(
     ##### Returns:
     - The http response message
     """
-    OUTPUT_DIR = os.path.join(settings.output_dir, settings.output_folder_high_freq)
-    TEMP_HIGH_FREQ_DATA_PATH = os.path.join(OUTPUT_DIR, settings.temp_high_freq_filename) + ".csv"
+    PATH_TO_HIGH_FREQ_FOLDER = os.path.join(settings.output_dir, settings.output_folder_high_freq)
+    TEMP_HIGH_FREQ_DATA_PATH = os.path.join(PATH_TO_HIGH_FREQ_FOLDER, settings.temp_high_freq_filename) + ".csv"
     raw_bytes = await request.body()
     decoded_data = raw_bytes.decode("utf-8").replace('"', '').replace('\r\n', 'x,').split(",")
     indicies = [(i+1) for i, x in enumerate(decoded_data) if x.endswith('x')]
@@ -143,7 +143,7 @@ async def upload_high_freq_event(
             writer.writerows(high_freq_data)
         initial_timestamp = timestamp.get_initial_timestamp(TEMP_HIGH_FREQ_DATA_PATH)
         latest_timestamp = timestamp.get_final_timestamp(TEMP_HIGH_FREQ_DATA_PATH, 2)
-        high_freq_data_path = files.create_timestamped_filepath(initial_timestamp, latest_timestamp, settings.output_high_freq_filename, OUTPUT_DIR)
+        high_freq_data_path = files.create_timestamped_filepath(initial_timestamp, latest_timestamp, settings.output_high_freq_filename, PATH_TO_HIGH_FREQ_FOLDER)
         os.rename(TEMP_HIGH_FREQ_DATA_PATH, high_freq_data_path)
     except Exception:  # exception returns an error message that there was an error updating file
         return {"message": "There was an error updating the file"}
@@ -157,7 +157,7 @@ async def upload_high_freq_event(
         delta_time = new_file_start_time - old_file_end_time
         if delta_time <= timedelta(0, 0, settings.scan_rate_micro_s):
             combined_csv = pd.concat([pd.read_csv(prev_high_freq_data_path), pd.read_csv(high_freq_data_path)])
-            temp_filename = os.path.join(OUTPUT_DIR, 'temp.csv')
+            temp_filename = os.path.join(PATH_TO_HIGH_FREQ_FOLDER, 'temp.csv')
             combined_csv.to_csv(temp_filename, index=False)
             os.remove(high_freq_data_path)
             os.remove(prev_high_freq_data_path)
@@ -166,10 +166,10 @@ async def upload_high_freq_event(
     try:  # try get total timestamp for new combined file
         temp_initial_timestamp = timestamp.get_initial_timestamp(temp_filename)
         temp_latest_timestamp = timestamp.get_final_timestamp(temp_filename, 2)
-        high_freq_data_path = files.create_timestamped_filepath(temp_initial_timestamp, temp_latest_timestamp, settings.output_high_freq_filename, OUTPUT_DIR)
+        high_freq_data_path = files.create_timestamped_filepath(temp_initial_timestamp, temp_latest_timestamp, settings.output_high_freq_filename, PATH_TO_HIGH_FREQ_FOLDER)
         os.rename(temp_filename, high_freq_data_path)
     except Exception:
         pass  # pass, only errors when there is no combined file made
     prev_high_freq_data_path = high_freq_data_path
-    files.set_num_file_limit(OUTPUT_DIR, settings.max_num_of_files)
+    files.set_num_file_limit(PATH_TO_HIGH_FREQ_FOLDER, settings.max_num_of_files)
     return {"message": "successfully uploaded high frequency data"}
