@@ -107,7 +107,7 @@ async def upload_low_freq_data(
         if low_freq_data_path != '':
             logger.error("There was an error opening the low frequency data file", exc_info=True)
         else:
-            logger.info("There was no previous low frequency data file")
+            logger.info("No previous low frequency data file could be found")
     if continue_with_file:  # if file exists and is not full, append data to file
         try:  # appending data to file is achieved by renaming the file the temp file name and continuing with the temp file
             os.rename(low_freq_data_path, TEMP_LOW_FREQ_DATA_PATH)
@@ -128,6 +128,7 @@ async def upload_low_freq_data(
         logger.error("There was an error updating the low frequency data file", exc_info=True)
         return {"message": "There was an error updating the low frequency data file"}
     files.set_num_file_limit(PATH_TO_LOW_FREQ_FOLDER, settings.max_num_of_files)
+    logger.info("Successfully uploaded low frequency data")
     return {"message": "successfully uploaded low frequency data"}
 
 @app.post("/uploadHighFreqAccel/{logger_filename}")
@@ -182,7 +183,7 @@ async def upload_high_freq_event(
     try:  # try read the last timestamp from the previous high frequency data path
         prev_last_timestamp = timestamp.get_final_timestamp(prev_high_freq_data_path, 2)
     except Exception:
-        logger.info("There was no previous high frequency data file")
+        logger.info("No previous high frequency data file could be found")
     try:  # try combine current and previous files when current file is a continuation of previous one
         old_file_end_time = datetime.strptime(prev_last_timestamp, '%Y.%m.%d_%H.%M.%S.%f')
         new_file_start_time = datetime.strptime(initial_timestamp, '%Y.%m.%d_%H.%M.%S.%f')
@@ -204,4 +205,5 @@ async def upload_high_freq_event(
         pass  # pass, only errors when there is no combined file made
     prev_high_freq_data_path = high_freq_data_path
     files.set_num_file_limit(PATH_TO_HIGH_FREQ_FOLDER, settings.max_num_of_files)
+    logger.info("Successfully uploaded high frequency data")
     return {"message": "successfully uploaded high frequency data"}
