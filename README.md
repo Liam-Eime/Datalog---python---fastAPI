@@ -17,5 +17,6 @@ main.py must be run using uvicorn as a FastAPI application.
 ### Plotting
 plotting.py can be run separately from main.py as a Python file, to plot the data as it is received by the web application running on main.py.
 
+### Author and Date
 Author: Liam Eime\
 Date: 11/12/2023
