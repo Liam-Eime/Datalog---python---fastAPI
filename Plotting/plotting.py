@@ -2,7 +2,7 @@
 Plotting script for plotting the .csv data from the HTTP request from the Python web application.
 
 Author: Liam Eime
-Date: 11/12/2023
+Date: 12/12/2023
 """
 
 def main():
