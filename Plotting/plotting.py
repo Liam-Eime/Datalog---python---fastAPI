@@ -40,6 +40,8 @@ def main():
             plt.plot(high_freq_timestamps, accelerometer2_z, label='Accelerometer2.Z', color='grey')
             plt.legend()
             plt.draw()
+            plt.gcf().autofmt_xdate()
+            plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
         except Exception:
             pass
 
@@ -53,6 +55,8 @@ def main():
             temperature = low_freq_df["Temperature"].astype(float)
             plt.plot(low_freq_timestamps, temperature, label='Temperature', color='red', marker='*')
             plt.draw()
+            plt.gcf().autofmt_xdate()
+            plt.gca().xaxis.set_major_formatter(mdates.DateFormatter('%H:%M:%S'))
         except Exception:
             pass
 
@@ -63,6 +67,7 @@ def main():
 if __name__ == '__main__':
     # import libraries
     from matplotlib import pyplot as plt
+    from matplotlib import dates as mdates
     from dotenv import load_dotenv
     import pandas as pd
     import os
