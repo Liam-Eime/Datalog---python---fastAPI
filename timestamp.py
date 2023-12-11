@@ -3,7 +3,7 @@ Functions for getting and formatting timestamps, for use for creating and naming
 For use with the Python web application for CR1000 data logging.
 
 Author: Liam Eime
-Date: 08/12/2023
+Date: 11/12/2023
 """
 
 import os
