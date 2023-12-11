@@ -1,4 +1,4 @@
-'Date: 11/12/2023
+'Date: 12/12/2023
 'Program author: Liam Eime
 
 'Declare Public Variables
@@ -64,6 +64,8 @@ BeginProg
     CallTable LowFreq
   NextScan
   
+  'SlowSequence scan,
+  'data can be missed in the slow sequence scan when high frequency event is continuous for longer than 30s, usually only misses 1-2 low frequency readings
   SlowSequence
     Scan(30, Sec,2, 0)
       HTTPHeader_LF = "accept: application/json" + "Content-Type: multipart/form-data"
