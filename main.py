@@ -12,6 +12,7 @@ Author: Liam Eime
 Date: 11/12/2023
 """
 
+# Python imports
 from fastapi import FastAPI, Request, Depends
 from functools import lru_cache
 from datetime import datetime, timedelta
@@ -26,15 +27,19 @@ import config
 import timestamp
 import files
 
+# global variables
 low_freq_data_path = ''
 prev_high_freq_data_path = ''
 
+# create FastAPI instance
 app = FastAPI()
 
+# create a singleton instance of the config.Settings class
 @lru_cache
 def get_settings():
     return config.Settings()
-    
+
+# HTTP methods    
 @app.post("/uploadLowFreq/{logger_filename}")
 async def upload_low_freq_data(
     logger_filename: str, 

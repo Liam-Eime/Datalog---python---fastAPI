@@ -6,6 +6,7 @@ Author: Liam Eime
 Date: 11/12/2023
 """
 
+# Python imports
 import os
 
 def format_timestamp(entry: list[str]):

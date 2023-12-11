@@ -1,3 +1,12 @@
+"""
+Python class for storing the config settings.
+
+Author: Liam Eime
+Date: 11/12/2023
+"""
+
+
+# import libraries
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):

@@ -6,10 +6,12 @@ Date: 11/12/2023
 """
 
 def main():
+    # load environment variables
     load_dotenv()
     OUTPUT_DIR = os.getenv('OUTPUT_DIR')
     OUTPUT_FOLDER_HIGH_FREQ = os.getenv('OUTPUT_FOLDER_HIGH_FREQ')
     OUTPUT_FOLDER_LOW_FREQ = os.getenv('OUTPUT_FOLDER_LOW_FREQ')
+    # set variables
     PATH_TO_HF_DATA_FOLDER = os.path.join(OUTPUT_DIR, OUTPUT_FOLDER_HIGH_FREQ)
     PATH_TO_LF_DATA_FOLDER = os.path.join(OUTPUT_DIR, OUTPUT_FOLDER_LOW_FREQ)
     PAUSE_TIME_S = 5
@@ -59,6 +61,7 @@ def main():
         plt.figure("Low Frequency Temperature").clear()
 
 if __name__ == '__main__':
+    # import libraries
     from matplotlib import pyplot as plt
     from dotenv import load_dotenv
     import pandas as pd
