@@ -65,7 +65,8 @@ BeginProg
   NextScan
   
   'SlowSequence scans,
-  'data can be missed in the slow sequence scan when high frequency event is continuous for longer than 30s, usually only misses 1-2 low frequency readings
+  'Low freq HTTP post method can occaisonally be skipped when high freq event is continuous,
+  'this is rarely a problem due to the application of the project.
   SlowSequence
     Scan(30, Sec, 2, 0)
       HTTPHeader_LF = "accept: application/json" + "Content-Type: multipart/form-data"
