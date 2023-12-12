@@ -118,13 +118,15 @@ def main():
     while True:
         try:
             plot_high_freq_data(PATH_TO_HF_DATA_FOLDER)
+        except Exception:
+            pass
+        try:
             plot_low_freq_data(PATH_TO_LF_DATA_FOLDER)
         except Exception:
             pass
-        finally:
-            plt.pause(PAUSE_TIME_S)
-            plt.figure("High Frequency Accelerations").clear()
-            plt.figure("Low Frequency Temperature").clear()
+        plt.pause(PAUSE_TIME_S)
+        plt.figure("High Frequency Accelerations").clear()
+        plt.figure("Low Frequency Temperature").clear()
 
 if __name__ == '__main__':
     main()
