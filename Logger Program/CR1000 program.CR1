@@ -64,13 +64,17 @@ BeginProg
     CallTable LowFreq
   NextScan
   
-  'SlowSequence scan,
+  'SlowSequence scans,
   'data can be missed in the slow sequence scan when high frequency event is continuous for longer than 30s, usually only misses 1-2 low frequency readings
   SlowSequence
-    Scan(30, Sec,2, 0)
+    Scan(30, Sec, 2, 0)
       HTTPHeader_LF = "accept: application/json" + "Content-Type: multipart/form-data"
       HTTPPostTX_LF = HTTPPost ("http://192.168.0.108:8000/uploadLowFreq/","LowFreq",HTTPResponse_LF,HTTPHeader_LF,-1,0,Sec,13,10)
-      
+    NextScan
+  EndSequence
+  
+  SlowSequence
+    Scan(30, Sec, 2, 0)
       HTTPHeader_HF = "accept: application/json" + "Content-Type: multipart/form-data"
       HTTPPostTX_HF = HTTPPost ("http://192.168.0.108:8000/uploadHighFreqAccel/","HighFreqAccel",HTTPResponse_HF,HTTPHeader_HF,0,0,Sec,13,10)
     NextScan
