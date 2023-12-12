@@ -20,7 +20,6 @@ Units PTemp = C
 
 Public HTTPResponse_LF As String * 200
 Public HTTPPostTX_LF
-
 Public HTTPResponse_HF As String * 200
 Public HTTPPostTX_HF
 
@@ -33,7 +32,6 @@ Dim z_t = 1.1  'z axis acceleration threshold
 Dim HighFrequencyAccelerationCheck As Boolean
 
 Dim HTTPHeader_LF As String * 200
-
 Dim HTTPHeader_HF As String *200
 
 'Define Data Tables.
@@ -44,7 +42,7 @@ DataTable (HighFreqAccel,1,-1 )
 EndTable
 
 DataTable (LowFreq,1,-1 )
-  DataInterval (0,30,Sec,10)
+  DataInterval (0,30,Sec,10)  'The data interval rate here should match the SlowSequence rate for the low freq HTTP posting, otherwise the python web application will not work properly.
   Maximum (3,Accel_1(),IEEE4,False,False)
   Maximum (3,Accel_2(),IEEE4,False,False)
   Minimum (3,Accel_1(),IEEE4,False,False)
@@ -68,7 +66,7 @@ BeginProg
   'Low freq HTTP post method can occaisonally be skipped when high freq event is continuous,
   'this is rarely a problem due to the application of the project.
   SlowSequence
-    Scan(30, Sec, 2, 0)
+    Scan(30, Sec, 2, 0)  'Refer to comment on LowFreq data table DataInterval for importance of the Scan rate.
       HTTPHeader_LF = "accept: application/json" + "Content-Type: multipart/form-data"
       HTTPPostTX_LF = HTTPPost ("http://192.168.0.108:8000/uploadLowFreq/","LowFreq",HTTPResponse_LF,HTTPHeader_LF,-1,0,Sec,13,10)
     NextScan
